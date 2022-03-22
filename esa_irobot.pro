@@ -75,11 +75,13 @@ LIBS += -lws2_32
 LIBS += -lWinmm
 }
 SOURCES += main.cpp\
+    gesture.cpp \
         mainwindow.cpp \
     rplidar.cpp \
     CKobuki.cpp
 
 HEADERS  += mainwindow.h \
+    gesture.h \
     rplidar.h \
     CKobuki.h
 

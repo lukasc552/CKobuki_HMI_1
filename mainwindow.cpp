@@ -318,7 +318,6 @@ void MainWindow::paintEvent(QPaintEvent *event)
     painter.drawRect(rect2);
     painter.drawRect(rect3);
 
-    bool sync = false;
     if(updateCameraPicture==1 && showCamera==true)
     {
         updateCameraPicture=0;
@@ -360,19 +359,45 @@ void MainWindow::paintEvent(QPaintEvent *event)
         painter.setPen(pero_joints);
         for(int i=0;i<75;i++)
         {
-            int xp/*=720-720 * kostricka.joints[i].x*/;
-            int yp/*=120+ 500 *kostricka.joints[i].y*/;
+            int xp;
+            int yp;
 //            std::cout << klby[0] << ": " << kostricka.joints[0].x << kostricka.joints[0].y << std::endl;
             xp = rect3.width() - rect3.width() * kostricka.joints[i].x + rect3.topLeft().x();
             yp = rect3.height() * kostricka.joints[i].y + rect3.topLeft().y();
             if(rect3.contains(xp,yp)){
                 painter.drawEllipse(QPoint(xp, yp),2,2);
+
             }
+        }
+        detector.updateSkelet(kostricka);
+//        vector<klb> finger;
+//        finger.push_back(kostricka.joints[38]);
+//        finger.push_back(kostricka.joints[39]);
+//        finger.push_back(kostricka.joints[40]);
+//        finger.push_back(kostricka.joints[41]);
+
+//        std::cout<<"======================="<<std::endl;
+//        if(detector.isFingerInLine(finger, 10, 0.02) && kostricka.joints[74-48].x != 0.0){
+//            std::cout<<"ROVNO"<<std::endl;
+//        }else{
+//            std::cout<<"Krivo"<<std::endl;
+//        }
+//        std::cout<<"======================="<<std::endl;
+
+        int action = detector.detectGestures();
+//        int action = -1;
+        switch(action)
+        {
+        case GEST_STOP:
+            sendRobotCommand(ROBOT_STOP,0);
+            break;
+        case GEST_FORWARD:
+            sendRobotCommand(ROBOT_VPRED,300);
+            break;
         }
     }
 
 }
-
 
 
 ///konstruktor aplikacie, nic co tu je nevymazavajte, ak potrebujete, mozete si tu pridat nejake inicializacne parametre
@@ -445,7 +470,60 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
 //--cokolvek za tymto vas teoreticky nemusi zaujimat, su tam len nejake skarede kody
 
 
+//bool MainWindow::isFingerInLine(vector<klb> finger_joints){
+//    if(finger_joints.size()<4){
 
+//        return false;
+//    }
+//    double threshhold = 0.007;
+
+//    for(int i = 1; i<3; i++){
+//        double tempx, tempy;
+//        tempx = finger_joints.at(i).x;
+//        tempy = finger_joints.at(i).y;
+
+//        double tempdist = pDistFromLine(tempx, tempy, finger_joints.at(0).x, finger_joints.at(0).y, finger_joints.at(3).x, finger_joints.at(3).y);
+////        cout<<"Temp dist: "<<tempdist<<endl;
+//        if(tempdist > threshhold){
+//            return false;
+//        }
+//    }
+//    return true;
+//}
+
+
+//double MainWindow::pDistFromLine(double x, double y, double x1, double y1, double x2, double y2){
+
+//    double A = x - x1;
+//    double B = y - y1;
+//    double C = x2 - x1;
+//    double D = y2 - y1;
+
+//    double dot = A * C + B * D;
+//    double len_sq = C * C + D * D;
+//    double param = -1;
+//    if (len_sq != 0) //in case of 0 length line
+//        param = dot / len_sq;
+
+//    double xx, yy;
+
+//    if (param < 0) {
+//      xx = x1;
+//      yy = y1;
+//    }
+//    else if (param > 1) {
+//      xx = x2;
+//      yy = y2;
+//    }
+//    else {
+//      xx = x1 + param * C;
+//      yy = y1 + param * D;
+//    }
+
+//    double dx = x - xx;
+//    double dy = y - yy;
+//    return sqrt(dx * dx + dy * dy);
+//}
 
 
 

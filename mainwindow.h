@@ -33,6 +33,8 @@
 #include "rplidar.h"
 #include <QThread>
 #include <QKeyEvent>
+#include "gesture.h"
+
 #define ROBOT_VPRED 0x01
 #define ROBOT_VZAD 0x02
 #define ROBOT_VLAVO 0x04
@@ -131,17 +133,17 @@ typedef struct
 //    uchar red;
 //};
 
-typedef struct
-{
-    double x;
-    double y;
-    double z;
-}klb;
+//typedef struct
+//{
+//    double x;
+//    double y;
+//    double z;
+//}klb;
 
-typedef struct
-{
-    klb joints[75];
-}skeleton;
+//typedef struct
+//{
+//    klb joints[75];
+//}skeleton;
 
 typedef struct
 {
@@ -340,6 +342,7 @@ void skeletonprocess();
     cv::Mat previousPicture;
 
     skeleton kostricka;
+    Gesture detector;
 private slots:
 
     void on_pushButton_3_clicked();
