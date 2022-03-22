@@ -149,72 +149,6 @@ cv::Mat MainWindow::getLidarFusion(cv::Mat oldFrameBuff){
         }
     }
 
-//        cv::Mat edgeFrame;
-//        cv::cvtColor(frame, edgeFrame, cv::COLOR_RGB2GRAY);
-//        cv::Canny(edgeFrame, edgeFrame, 50, 100);
-
-////        Mat thresh;
-////        threshold(edgeFrame, thresh, 150, 255, THRESH_BINARY);
-
-
-//        vector<vector<cv::Point> > contours;
-//        vector<vector<cv::Point> > goodContours;
-//        vector<cv::Vec4i> hierarchy;
-//        findContours(edgeFrame, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE );
-
-//        for(int j = 0; j < edgeFrame.cols; j++){
-//            for(int i = 0; i < edgeFrame.rows; i++){
-
-//            }
-//        }
-
-
-
-//        int xc, yc;
-//        RNG rng(12345);
-//        for (int i = 0; i < contours.size(); ++i) {
-//            vector<cv::Point> current;
-//            cout << "Area: " << contourArea(contours[i]) << endl;
-//            if (contourArea(contours[i]) > 5000 && contourArea(contours[i]) < 190000) {
-
-//                approxPolyDP(contours[i], current, 0.01 * arcLength(contours[i], true), true);
-//                Moments m = cv::moments(contours[i]);
-//                if(m.m00 != 0.0){
-//                    xc = m.m10/m.m00;
-//                    yc = m.m01/m.m00;
-//                }
-//                if(current.size() == 4){
-//                    goodContours.push_back(contours[i]);
-//                    Scalar color = Scalar( rng.uniform(0, 256), rng.uniform(0,256), rng.uniform(0,256) );
-//                    drawContours(frame, contours, i, /*Scalar(0, 0, 255)*/color, 5, LINE_8, hierarchy, 0);
-//                    putText(edgeFrame, "Stvorec", Point(xc, yc), cv::FONT_HERSHEY_SIMPLEX, 0.6, Scalar(255, 255, 255), 2);
-//                }
-//            }
-//        }
-
-//        drawContours(frame, goodContours, -1, Scalar(0, 0, 255), -1);
-//        cv::cvtColor(edgeFrame, edgeFrame, cv::COLOR_GRAY2BGR);
-//            Mat contImg;
-//            edgeFrame.copyTo(contImg);
-
-//            vector<vector<Point>> polyCurves;
-        //for (int i = 0; i < goodContours.size(); ++i) {
-//                current.push_back(contours[i]);
-//                for(int j = 0; j<contours[i].size(); j++){
-//                }
-
-//            if(current.size() == 4){
-
-//            }else{
-//                putText(edgeFrame, "Nieco INE", Point(xc, yc), cv::FONT_HERSHEY_SIMPLEX, 0.6, Scalar(255, 255, 255), 2);
-//            }
-
-
-//                if(current.size() > 0){
-//                    polyCurves.push_back(current);
-//                }
-
-        //}
 
 
 //    edgeFrame.copyTo(frame);
@@ -238,7 +172,7 @@ int MainWindow::locallaser(LaserMeasurement &laserData)
     }
 
     //priklad ako zastavit robot ak je nieco prilis blizko
-    if(laserData.Data[0].scanDistance<500)
+    if(laserData.Data[0].scanDistance<100)
     {
 
         sendRobotCommand(ROBOT_STOP);
@@ -300,8 +234,12 @@ void MainWindow::paintEvent(QPaintEvent *event)
 //    painter2.setBrush(Qt::black);
     QPen pero_lidar;
     pero_lidar.setStyle(Qt::SolidLine);
-    pero_lidar.setWidth(3);
+    pero_lidar.setWidth(1);
     pero_lidar.setColor(Qt::green);
+
+    QPen pero_irobot;
+    pero_irobot.setWidth(1);
+    pero_irobot.setColor(Qt::red);
 
     QPen pero_joints;
     pero_joints.setColor(Qt::cyan);
@@ -338,6 +276,8 @@ void MainWindow::paintEvent(QPaintEvent *event)
         painter.setPen(pero_lidar);
         for(int k=0;k<paintLaserData.numberOfScans;k++)
         {
+            if(paintLaserData.Data[k].scanDistance < 150) continue;
+
             int dist=paintLaserData.Data[k].scanDistance/30;
             int xp=rect2.width()-(rect2.width()/2 + dist*sin((360.0-paintLaserData.Data[k].scanAngle)*PI/180.0))+rect2.topLeft().x();
             int yp=rect2.height()-(rect2.height()/2 + dist*cos((360.0-paintLaserData.Data[k].scanAngle)*PI/180.0))+rect2.topLeft().y();
@@ -346,10 +286,13 @@ void MainWindow::paintEvent(QPaintEvent *event)
                 painter.drawEllipse(QPoint(xp, yp),2,2);
             }
             //if(xp<rect2.width()+1 && xp>19 && yp<rect2.height()+1 && yp>121)
-
-
-
         }
+
+        int hw = rect2.topLeft().x() + rect2.width()/2;
+        int hh = rect2.topLeft().y() + rect2.height()/2;
+        painter.setPen(pero_irobot);
+        painter.drawEllipse(QPoint(hw, hh), 10, 10);
+        painter.drawLine(QPoint(hw, hh), QPoint(hw, hh-10));
     }
     if(updateSkeletonPicture==1 && showSkeleton==true)
     {
@@ -388,11 +331,20 @@ void MainWindow::paintEvent(QPaintEvent *event)
 //        int action = -1;
         switch(action)
         {
-        case GEST_STOP:
+        case GESTO_STOP:
             sendRobotCommand(ROBOT_STOP,0);
             break;
-        case GEST_FORWARD:
-            sendRobotCommand(ROBOT_VPRED,300);
+        case GESTO_FORWARD:
+            sendRobotCommand(ROBOT_VPRED,200);
+            break;
+        case GESTO_BACKWARD:
+            sendRobotCommand(ROBOT_VZAD,-150);
+            break;
+        case GESTO_LEFT:
+            sendRobotCommand(ROBOT_VLAVO,3.14159/5);
+            break;
+        case GESTO_RIGHT:
+            sendRobotCommand(ROBOT_VPRAVO,-3.14159/5);
             break;
         }
     }
