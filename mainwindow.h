@@ -127,11 +127,13 @@ typedef struct
     int y;
 }XY;
 
-//struct BGR {
-//    uchar blue;
-//    uchar green;
-//    uchar red;
-//};
+typedef struct
+{
+    vector<XY> lower;
+    vector<XY> upper;
+    vector<double> dist;
+}AreaPoints;
+
 
 //typedef struct
 //{
@@ -343,57 +345,74 @@ void skeletonprocess();
 
     skeleton kostricka;
     Gesture detector;
+
+    int action;
+    bool collision = false;
+
+    cv::Mat imgStop;
+    cv::Mat imgForward;
+    cv::Mat imgBackward;
+    cv::Mat imgLeft;
+    cv::Mat imgRight;
+
+
+
+
 private slots:
 
-    void on_pushButton_3_clicked();
+//    void on_pushButton_3_clicked();
 
-    void on_pushButton_7_clicked();
+//    void on_pushButton_7_clicked();
 
-    void on_pushButton_5_clicked();
+//    void on_pushButton_5_clicked();
 
-    void on_pushButton_4_clicked();
+//    void on_pushButton_4_clicked();
 
-    void on_pushButton_6_clicked();
+//    void on_pushButton_6_clicked();
 
-    void on_pushButton_clicked();
+//    void on_pushButton_clicked();
   //  void robotexec();
 
-    void on_pushButton_8_clicked();
+//    void on_pushButton_8_clicked();
 
-    void on_pushButton_10_clicked();
+//    void on_pushButton_10_clicked();
 
-    void on_pushButton_11_clicked();
+//    void on_pushButton_11_clicked();
 
-    void on_pushButton_9_clicked();
+//    void on_pushButton_9_clicked();
 
-    void on_pushButton_12_clicked();
+//    void on_pushButton_12_clicked();
 
-    void on_pushButton_13_clicked();
+//    void on_pushButton_13_clicked();
 
-    void on_checkBox_2_clicked(bool checked);
+//    void on_checkBox_2_clicked(bool checked);
 
-    void on_checkBox_3_clicked(bool checked);
+//    void on_checkBox_3_clicked(bool checked);
 
-    void on_checkBox_4_clicked(bool checked);
+//    void on_checkBox_4_clicked(bool checked);
 
-    void on_checkBox_clicked(bool checked);
+//    void on_checkBox_clicked(bool checked);
 
 
-    void on_checkBox_lidar_clicked(bool checked);
+//    void on_checkBox_lidar_clicked(bool checked);
 
-    void on_checkBox_skeleton_clicked(bool checked);
+//    void on_checkBox_skeleton_clicked(bool checked);
 
-    void on_checkBox_cam_clicked(bool checked);
+//    void on_checkBox_cam_clicked(bool checked);
 
-    void on_pushButton_forward_clicked();
+//    void on_pushButton_forward_clicked();
 
-    void on_stop_button_clicked();
+//    void on_stop_button_clicked();
 
-    void on_pushButton_backward_clicked();
+//    void on_pushButton_backward_clicked();
 
-    void on_pushButton_right_clicked();
+//    void on_pushButton_right_clicked();
 
-    void on_pushButton_left_clicked();
+//    void on_pushButton_left_clicked();
+
+//    void on_MainWindow_iconSizeChanged(const QSize &iconSize);
+
+    void on_pushButton_stop_clicked();
 
 private:
 

@@ -70,52 +70,40 @@ void MainWindow::localrobot(TKobukiData &sens)
 
 cv::Mat MainWindow::getLidarFusion(cv::Mat oldFrameBuff){
     cv::Mat frame = oldFrameBuff;
-
     cv::Mat edgeFrame;
-//    Mat thresh;
 
+    cv::cvtColor(frame, edgeFrame, cv::COLOR_RGB2GRAY);
+    cv::GaussianBlur(edgeFrame, edgeFrame, Size(3, 3), 2);
+    cv::Canny(edgeFrame, edgeFrame, 100, 150);
+
+    short count_collisions = 0;
     for (int i = 0; i < paintLaserData.numberOfScans; i++) {
 //        std::cout << "Dist["<<i<<"]: " << laserData.Data[i].scanDistance << " Angle["<<i<<"]: " << laserData.Data[i].scanAngle << std::endl;
 
+        if(paintLaserData.Data[i].scanDistance < 100) continue;
+
         double D = paintLaserData.Data[i].scanDistance/1000;
+        if(D < 0.3){
+            count_collisions++;
+        }
         double alpha = (360 - paintLaserData.Data[i].scanAngle)*PI/180;
         if(alpha > 2*PI-(fusionData.camWidthAngle/2) || alpha < fusionData.camWidthAngle/2){
-//            std::cout << "Citam"<< std::endl;
+
             double Z = D * cos(alpha);
             double X = D * sin(alpha);
 
             fusionData.xobr = (frame.cols/2) - (int)((fusionData.f * X)/Z);
             fusionData.yobr = (frame.rows/2) + (int)((fusionData.f * fusionData.Y)/Z);
 
-//            std::cout << "X: " << fusionData.xobr << "; Y: " << fusionData.yobr << std::endl;
 
-            cv::cvtColor(frame, edgeFrame, cv::COLOR_RGB2GRAY);
-            cv::Canny(edgeFrame, edgeFrame, 50, 100);
-//            cv::cvtColor(edgeFrame, edgeFrame, cv::COLOR_GRAY2BGR);
-
-//            threshold(edgeFrame, thresh, 150, 255, THRESH_BINARY);
-
-//            vector<vector<cv::Point> > contours;
-////            vector<vector<cv::Point> > goodContours;
-//            vector<cv::Vec4i> hierarchy;
-//            findContours(edgeFrame, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE );
-
-
-            vector<XY> lowerPoints;
-//            vector<XY> upperPoints;
             int lx;
             int ly;
             int ux;
             int uy;
             int x = fusionData.xobr;
-//            int y = fusionData.yobr;
             for(int j = fusionData.yobr; j<edgeFrame.rows; j++){
-////                Vec3b &color = edgeFrame.at<Vec3b>(fusionData.xobr, j);
-//                BGR& bgr = edgeFrame.ptr<BGR>(j)[x];
-//                cout<<bgr.blue << ", " << bgr.green << ", " << bgr.red << endl;
 
                 if(edgeFrame.at<uchar>(j, x) == 255){
-//                    lowerPoints.push_back({x, j});
                     lx = x;
                     ly = j;
                     break;
@@ -123,33 +111,60 @@ cv::Mat MainWindow::getLidarFusion(cv::Mat oldFrameBuff){
             }
             for(int j = fusionData.yobr; j>=0; j--){
                 if(edgeFrame.at<uchar>(j, x) == 255){
-//                    upperPoints.push_back({fusionData.xobr, j});
                     ux = x;
                     uy = j;
                     break;
-                }else{
                 }
             }
-            cv::Rect rectl(lx, ly, 4, 4);
-            cv::rectangle(frame, rectl, cv::Scalar(255, 0, 255));
-            cv::Rect rectu(ux, uy, 4, 4);
-            cv::rectangle(frame, rectu, cv::Scalar(255, 0, 255));
+//            cv::Rect rectl(lx, ly, 4, 4);
+//            cv::rectangle(frame, rectl, cv::Scalar(255, 0, 255));
+//            cv::Rect rectu(ux, uy, 4, 4);
+//            cv::rectangle(frame, rectu, cv::Scalar(255, 0, 255));
+
+            short b = 24;
+            short g;
+            short r = 222;
+            g = b + (short)((D-0.5)*(r-b)/(1.6-0.5));
+            Scalar color;
+
+            if(D < 0.5){
+                color = Scalar(b, b, r);
+            }else if(D >= 0.5 && D < 1.6){
+                color = Scalar(b, g, r);
+            }else{
+                color = Scalar(b, r, r);
+            }
+            if(lx == ux){
+                cv::line(frame, Point(lx, ly-10), Point(ux, uy+10), color, 15, 1);
+            }
+
+
+//            points.lower.push_back({lx, ly});
+//            points.upper.push_back({ux, uy});
+//            points.dist.push_back(paintLaserData.Data[i].scanDistance);
 
 //            return edgeFrame;
 //            return contImg;
 
-            cv::Rect rect(fusionData.xobr, fusionData.yobr, 4, 4);
-            if(D < 0.5){
-                cv::rectangle(frame, rect, cv::Scalar(0, 0, 255));
-            }else if(D >= 0.5 && D < 1.2){
-                cv::rectangle(frame, rect, cv::Scalar(255, 255, 0));
-            }else{
-                cv::rectangle(frame, rect, cv::Scalar(255, 0, 0));
-            }
+//            cv::Rect rect(fusionData.xobr, fusionData.yobr, 4, 4);
+//            if(D < 0.5){
+//                cv::rectangle(frame, rect, cv::Scalar(0, 0, 255));
+//            }else if(D >= 0.5 && D < 1.2){
+//                cv::rectangle(frame, rect, cv::Scalar(255, 255, 0));
+//            }else{
+//                cv::rectangle(frame, rect, cv::Scalar(255, 0, 0));
+//            }
+
         }
+
     }
 
-
+    //===================================
+    if(count_collisions > 0){
+        collision = true;
+    }else{
+        collision = false;
+    }
 
 //    edgeFrame.copyTo(frame);
     return frame;
@@ -164,7 +179,7 @@ int MainWindow::locallaser(LaserMeasurement &laserData)
         fusionData.altLidar = 0.21;
         fusionData.altCamera = 0.15;
         fusionData.Y = fusionData.altLidar - fusionData.altCamera;
-        fusionData.camWidthAngle = 54*PI/180;
+        fusionData.camWidthAngle = (54-2)*PI/180;
         fusionData.camHeightAngle = 40*PI/180;
         fusionData.f = 628.036;
 
@@ -172,9 +187,8 @@ int MainWindow::locallaser(LaserMeasurement &laserData)
     }
 
     //priklad ako zastavit robot ak je nieco prilis blizko
-    if(laserData.Data[0].scanDistance<100)
+    if(laserData.Data[0].scanDistance<200)
     {
-
         sendRobotCommand(ROBOT_STOP);
     }
 
@@ -231,6 +245,11 @@ void MainWindow::paintEvent(QPaintEvent *event)
 {
     QPainter painter(this);
     painter.setBrush(Qt::black);
+//    painter.setBrush(Qt::)
+//    QPainter paint(this);
+    QPen pen;
+    pen.setWidth(7);
+    pen.setColor(Qt::red);
 //    painter2.setBrush(Qt::black);
     QPen pero_lidar;
     pero_lidar.setStyle(Qt::SolidLine);
@@ -238,33 +257,158 @@ void MainWindow::paintEvent(QPaintEvent *event)
     pero_lidar.setColor(Qt::green);
 
     QPen pero_irobot;
-    pero_irobot.setWidth(1);
-    pero_irobot.setColor(Qt::red);
+    pero_irobot.setStyle(Qt::SolidLine);
+    pero_irobot.setWidth(4);
+    pero_irobot.setColor(Qt::cyan);
 
     QPen pero_joints;
     pero_joints.setColor(Qt::cyan);
 
-    QRect rect(20,120,700,500);
-    QRect rect2(20,120,700,500);
-    QRect rect3(20,120,700,500);
+    QPen penText;
+    penText.setColor(QColor(Qt::gray));
+
+    QPen penTextCollision;
+    penTextCollision.setColor(QColor(Qt::black));
+
+    QRect rect;
+//    QRect rect2(20,120,700,500);
+//    QRect rect3(20,120,700,500);
     rect = ui->camera->geometry();
-    rect2 = ui->lidar->geometry();
-    rect3 = ui->skeleton->geometry();
+//    rect2 = ui->lidar->geometry();
+//    rect3 = ui->skeleton->geometry();
 
 //    rect2.translate(0, 15);
-    painter.drawRect(rect);
-    painter.drawRect(rect2);
-    painter.drawRect(rect3);
+
+//    painter.drawRect(rect);
+
+//    painter.drawRect(rect2);
+//    painter.drawRect(rect3);
 
     if(updateCameraPicture==1 && showCamera==true)
     {
+//        cout<<"Camera"<<endl;
+
         updateCameraPicture=0;
         cv::resize(robotPicture, robotPicture, cv::Size(rect.width(), rect.height()), 0, 0, cv::INTER_CUBIC);
         QImage imgIn= QImage((uchar*) robotPicture.data, robotPicture.cols, robotPicture.rows, robotPicture.step, QImage::Format_BGR888);
 
-        painter.drawImage(rect.topLeft().x(), rect.topLeft().y(), imgIn);
-//        painter.drawImage(0, 0, imgIn);
-      //  cv::imshow("client",robotPicture);
+        painter.drawImage(rect.topLeft().x(), rect.topLeft().y()+5, imgIn);
+
+        QImage imageSTOP;
+        QImage imageForward;
+        QImage imageBackward;
+        QImage imageLeft;
+        QImage imageRight;
+
+        imageSTOP = QImage((uchar*) imgStop.data, imgStop.cols, imgStop.rows, imgStop.step, QImage::Format_BGR888);
+        imageForward = QImage((uchar*) imgForward.data, imgForward.cols, imgForward.rows, imgForward.step, QImage::Format_BGR888);
+        imageBackward = QImage((uchar*) imgBackward.data, imgBackward.cols, imgBackward.rows, imgBackward.step, QImage::Format_BGR888);
+        imageLeft = QImage((uchar*) imgLeft.data, imgLeft.cols, imgLeft.rows, imgLeft.step, QImage::Format_BGR888);
+        imageRight = QImage((uchar*) imgRight.data, imgRight.cols, imgRight.rows, imgRight.step, QImage::Format_BGR888);
+
+//        painter.drawImage(rect.topLeft().x()+rect.width()/2, rect.topLeft().y()+5, imageSTOP);
+        painter.setOpacity(0.4);
+        QRect opRect(rect.bottomLeft().x()+rect.width()*0.35, rect.bottomLeft().y()-(rect.height()*0.3), rect.width()*0.3, rect.height()*0.3/*rect.bottomLeft().x()+(rect.width()*0.2), rect.topLeft().y()*/);
+        painter.drawRoundRect(opRect);
+        QRect gestRect(rect.topRight().x()-rect.width(), rect.topRight().y(), rect.width()/4, rect.height()/4);
+//        painter.drawRect(gestRect);
+        QRect arrowRect(rect.topRight().x()-130, rect.topRight().y()+10, 120, 30);
+//        painter.drawRect(arrowRect);
+
+        painter.setOpacity(1);
+        painter.setPen(penText);
+        painter.setFont(QFont("Times", 16, QFont::Bold));
+        switch(action)
+        {
+        case GESTO_STOP:
+            painter.drawText(QPoint(arrowRect.topLeft().x(), arrowRect.topLeft().y()+arrowRect.height()/2), "STOP");
+
+//            painter.drawImage(gestRect.topLeft().x()+rect.width()/2, gestRect.topLeft().y()+gestRect.height()/2, imageSTOP);
+            break;
+        case GESTO_FORWARD:
+            painter.drawText(QPoint(arrowRect.topLeft().x(), arrowRect.topLeft().y()+arrowRect.height()/2), "FORWARD");
+//            painter.drawImage(gestRect.topLeft().x()+rect.width()/2 - imageForward.width()/2, gestRect.topLeft().y()+gestRect.height()/2 - imageForward.height()/2, imageForward);
+            break;
+        case GESTO_BACKWARD:
+            painter.drawText(QPoint(arrowRect.topLeft().x(), arrowRect.topLeft().y()+arrowRect.height()/2), "BACKWARD");
+//            painter.drawImage(gestRect.topLeft().x()+rect.width()/2 - imageBackward.width()/2, gestRect.topLeft().y()+gestRect.height()/2 - imageBackward.height()/2, imageBackward);
+            break;
+        case GESTO_LEFT:
+            painter.drawText(QPoint(arrowRect.topLeft().x(), arrowRect.topLeft().y()+arrowRect.height()/2), "LEFT");
+//            painter.drawImage(gestRect.topLeft().x()+rect.width()/2 - imageLeft.width()/2, gestRect.topLeft().y()+gestRect.height()/2 - imageLeft.height()/2, imageLeft);
+            break;
+        case GESTO_RIGHT:
+            painter.drawText(QPoint(arrowRect.topLeft().x(), arrowRect.topLeft().y()+arrowRect.height()/2), "RIGHT");
+//            painter.drawImage(gestRect.topLeft().x()+rect.width()/2 - imageRight.width()/2, gestRect.topLeft().y()+gestRect.height()/2 - imageRight.height()/2, imageRight);
+            break;
+        }
+
+        if(collision){
+            QRect collisionTextRect(rect.topLeft().x()+rect.width()/4, rect.topLeft().y()+20, rect.width()/2, 40);
+            painter.setPen(penTextCollision);
+            painter.setFont(QFont("Times", 30, QFont::Bold));
+            painter.drawText(QPoint(collisionTextRect.topLeft().x(), collisionTextRect.topLeft().y()+collisionTextRect.height()/2), "!WARNING! Collision!");
+        }
+
+        painter.setOpacity(0.4);
+
+        int hw = opRect.topLeft().x() + opRect.width()/2;
+        int hh = opRect.topLeft().y() + opRect.height()/2;
+
+        painter.setPen(pero_irobot);
+        painter.drawEllipse(QPoint(hw, hh), 25, 25);
+        painter.drawLine(QPoint(hw, hh), QPoint(hw, hh-25));
+
+        painter.setPen(pen);
+        QRectF r(hw-40, hh-40, 80, 80);
+        QRectF rr(hw-55, hh-55, 110, 110);
+        QRectF rrr(hw-70, hh-70, 140, 140);
+
+        for (int i = 0; i < paintLaserData.numberOfScans; i+=2) {
+            if(paintLaserData.Data[i].scanDistance < 150) continue;
+            double D = paintLaserData.Data[i].scanDistance/1000;
+            double alpha = (360.0-paintLaserData.Data[i].scanAngle);
+//            cout<<"Angle: "<<360-paintLaserData.Data[i].scanAngle<<endl;
+//            if(alpha>PI) alpha -= 2*PI;
+            short danger = 0;
+            if(D <= 0.7){
+                danger++;
+                if(D < 0.5){
+                    danger++;
+                    if(D <= 0.3) danger++;
+                }
+                if(alpha < 45 || alpha > 315){
+                    painter.drawArc(r, 16*60, 16*60);
+                    if(danger>1) painter.drawArc(rr, 16*60, 16*60);
+                    if(danger>2) painter.drawArc(rrr, 16*60, 16*60);
+                }
+                if(135 >= alpha && alpha >= 45){
+                    painter.drawArc(r, 16*150, 16*60);
+                    if(danger>1) painter.drawArc(rr, 16*150, 16*60);
+                    if(danger>2) painter.drawArc(rrr, 16*150, 16*60);
+                }
+                if(225 >= alpha && alpha > 135){
+                    painter.drawArc(r, 16*240, 16*60);
+                    if(danger>1) painter.drawArc(rr, 16*240, 16*60);
+                    if(danger>2) painter.drawArc(rrr, 16*240, 16*60);
+                }
+                if(315 >=alpha && alpha > 225){
+                    painter.drawArc(r, 16*330, 16*60);
+                    if(danger>1) painter.drawArc(rr, 16*330, 16*60);
+                    if(danger>2) painter.drawArc(rrr, 16*330, 16*60);
+                }
+            }
+        }
+
+//        painter.drawArc(r, 16*60, 16*60);
+//        painter.drawArc(r, 16*150, 16*60);
+//        painter.drawArc(r, 16*240, 16*60);
+//        painter.drawArc(r, 16*330, 16*60);
+
+//        painter.drawArc(hw, hh, 50, 50, 1000, 1000);
+//        painter.drawChord(hw, hh, 50, 50, 1000, 1000);
+
+        painter.setOpacity(1);
     }
 
     if(updateLaserPicture==1 && showLidar==true)
@@ -272,63 +416,51 @@ void MainWindow::paintEvent(QPaintEvent *event)
         /// ****************
         ///you can change pen or pen color here if you want
         /// ****************
-//        std::cout << "Lidar kreslim" << std::endl;
-        painter.setPen(pero_lidar);
-        for(int k=0;k<paintLaserData.numberOfScans;k++)
-        {
-            if(paintLaserData.Data[k].scanDistance < 150) continue;
+//        painter.setPen(pero_lidar);
+//        for(int k=0;k<paintLaserData.numberOfScans;k++)
+//        {
+//            if(paintLaserData.Data[k].scanDistance < 150) continue;
 
-            int dist=paintLaserData.Data[k].scanDistance/30;
-            int xp=rect2.width()-(rect2.width()/2 + dist*sin((360.0-paintLaserData.Data[k].scanAngle)*PI/180.0))+rect2.topLeft().x();
-            int yp=rect2.height()-(rect2.height()/2 + dist*cos((360.0-paintLaserData.Data[k].scanAngle)*PI/180.0))+rect2.topLeft().y();
-            if(rect2.contains(xp,yp)){
-//                std::cout << "Contains" << std::endl;
-                painter.drawEllipse(QPoint(xp, yp),2,2);
-            }
-            //if(xp<rect2.width()+1 && xp>19 && yp<rect2.height()+1 && yp>121)
-        }
+//            int dist=paintLaserData.Data[k].scanDistance/30;
+//            int xp=rect2.width()-(rect2.width()/2 + dist*sin((360.0-paintLaserData.Data[k].scanAngle)*PI/180.0))+rect2.topLeft().x();
+//            int yp=rect2.height()-(rect2.height()/2 + dist*cos((360.0-paintLaserData.Data[k].scanAngle)*PI/180.0))+rect2.topLeft().y();
+//            if(rect2.contains(xp,yp)){
+////                std::cout << "Contains" << std::endl;
+//                painter.drawEllipse(QPoint(xp, yp),2,2);
+//            }
+//            //if(xp<rect2.width()+1 && xp>19 && yp<rect2.height()+1 && yp>121)
+//        }
 
-        int hw = rect2.topLeft().x() + rect2.width()/2;
-        int hh = rect2.topLeft().y() + rect2.height()/2;
-        painter.setPen(pero_irobot);
-        painter.drawEllipse(QPoint(hw, hh), 10, 10);
-        painter.drawLine(QPoint(hw, hh), QPoint(hw, hh-10));
+//        int hw = rect2.topLeft().x() + rect2.width()/2;
+//        int hh = rect2.topLeft().y() + rect2.height()/2;
+//        painter.setPen(pero_irobot);
+//        painter.drawEllipse(QPoint(hw, hh), 10, 10);
+//        painter.drawLine(QPoint(hw, hh), QPoint(hw, hh-10));
+
+//        painter.draw
     }
     if(updateSkeletonPicture==1 && showSkeleton==true)
     {
 //        updateSkeletonPicture = 0;
 
 //        painter.setPen(Qt::red);
-        painter.setPen(pero_joints);
-        for(int i=0;i<75;i++)
-        {
-            int xp;
-            int yp;
-//            std::cout << klby[0] << ": " << kostricka.joints[0].x << kostricka.joints[0].y << std::endl;
-            xp = rect3.width() - rect3.width() * kostricka.joints[i].x + rect3.topLeft().x();
-            yp = rect3.height() * kostricka.joints[i].y + rect3.topLeft().y();
-            if(rect3.contains(xp,yp)){
-                painter.drawEllipse(QPoint(xp, yp),2,2);
+//        painter.setPen(pero_joints);
+//        for(int i=0;i<75;i++)
+//        {
+//            int xp;
+//            int yp;
+////            std::cout << klby[0] << ": " << kostricka.joints[0].x << kostricka.joints[0].y << std::endl;
+//            xp = rect3.width() - rect3.width() * kostricka.joints[i].x + rect3.topLeft().x();
+//            yp = rect3.height() * kostricka.joints[i].y + rect3.topLeft().y();
+//            if(rect3.contains(xp,yp)){
+//                painter.drawEllipse(QPoint(xp, yp),2,2);
 
-            }
-        }
-        detector.updateSkelet(kostricka);
-//        vector<klb> finger;
-//        finger.push_back(kostricka.joints[38]);
-//        finger.push_back(kostricka.joints[39]);
-//        finger.push_back(kostricka.joints[40]);
-//        finger.push_back(kostricka.joints[41]);
-
-//        std::cout<<"======================="<<std::endl;
-//        if(detector.isFingerInLine(finger, 10, 0.02) && kostricka.joints[74-48].x != 0.0){
-//            std::cout<<"ROVNO"<<std::endl;
-//        }else{
-//            std::cout<<"Krivo"<<std::endl;
+//            }
 //        }
-//        std::cout<<"======================="<<std::endl;
 
-        int action = detector.detectGestures();
-//        int action = -1;
+        detector.updateSkelet(kostricka);
+
+        action = detector.detectGestures();
         switch(action)
         {
         case GESTO_STOP:
@@ -347,6 +479,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
             sendRobotCommand(ROBOT_VPRAVO,-3.14159/5);
             break;
         }
+
     }
 
 }
@@ -372,6 +505,14 @@ MainWindow::MainWindow(QWidget *parent) :
     fusionData.prvyStart = true;
     updateCameraPicture=0;
     ipaddress="127.0.0.1";
+
+    imgStop = cv::imread("../gesta_imgs/stop_gesto.jpg");
+    imgForward = cv::imread("../gesta_imgs/forward_gesto.jpg");
+    imgBackward = cv::imread("../gesta_imgs/backward_gesto.jpg");
+    imgLeft = cv::imread("../gesta_imgs/left_gesto.jpg");
+    imgRight = cv::imread("../gesta_imgs/left_gesto.jpg");
+    cv::flip(imgRight, imgRight, +1);
+
     std::function<void(void)> f =std::bind(&robotUDPVlakno, (void *)this);
     robotthreadHandle=std::move(std::thread(f));
     std::function<void(void)> f2 =std::bind(&laserUDPVlakno, (void *)this);
@@ -407,13 +548,17 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
     std::cout<<event->key()<<std::endl;
     if(event->key() == Qt::Key_A){
         sendRobotCommand(ROBOT_VLAVO,3.14159/4);
-    }else if(event->key() == Qt::Key_D){
+    }
+    if(event->key() == Qt::Key_D){
         sendRobotCommand(ROBOT_VPRAVO,-3.14159/4);
-    }else if(event->key() == Qt::Key_W){
+    }
+    if(event->key() == Qt::Key_W){
         sendRobotCommand(ROBOT_VPRED,300);
-    }else if(event->key() == Qt::Key_S){
+    }
+    if(event->key() == Qt::Key_S){
         sendRobotCommand(ROBOT_VZAD,-250);
-    }else if(event->key() == Qt::Key_Q){
+    }
+    if(event->key() == Qt::Key_Q){
         sendRobotCommand(ROBOT_STOP,0);
     }
 
@@ -421,61 +566,6 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
 }
 //--cokolvek za tymto vas teoreticky nemusi zaujimat, su tam len nejake skarede kody
 
-
-//bool MainWindow::isFingerInLine(vector<klb> finger_joints){
-//    if(finger_joints.size()<4){
-
-//        return false;
-//    }
-//    double threshhold = 0.007;
-
-//    for(int i = 1; i<3; i++){
-//        double tempx, tempy;
-//        tempx = finger_joints.at(i).x;
-//        tempy = finger_joints.at(i).y;
-
-//        double tempdist = pDistFromLine(tempx, tempy, finger_joints.at(0).x, finger_joints.at(0).y, finger_joints.at(3).x, finger_joints.at(3).y);
-////        cout<<"Temp dist: "<<tempdist<<endl;
-//        if(tempdist > threshhold){
-//            return false;
-//        }
-//    }
-//    return true;
-//}
-
-
-//double MainWindow::pDistFromLine(double x, double y, double x1, double y1, double x2, double y2){
-
-//    double A = x - x1;
-//    double B = y - y1;
-//    double C = x2 - x1;
-//    double D = y2 - y1;
-
-//    double dot = A * C + B * D;
-//    double len_sq = C * C + D * D;
-//    double param = -1;
-//    if (len_sq != 0) //in case of 0 length line
-//        param = dot / len_sq;
-
-//    double xx, yy;
-
-//    if (param < 0) {
-//      xx = x1;
-//      yy = y1;
-//    }
-//    else if (param > 1) {
-//      xx = x2;
-//      yy = y2;
-//    }
-//    else {
-//      xx = x1 + param * C;
-//      yy = y1 + param * D;
-//    }
-
-//    double dx = x - xx;
-//    double dy = y - yy;
-//    return sqrt(dx * dx + dy * dy);
-//}
 
 
 
@@ -758,42 +848,6 @@ void MainWindow::laserprocess()
     std::cout<<"koniec thread"<<std::endl;
 }
 
-void MainWindow::on_pushButton_3_clicked()
-{
-    char tt=0x01;
-    sendRobotCommand(tt,250);
-}
-
-void MainWindow::on_pushButton_7_clicked()
-{
-    char tt=0x00;
-    sendRobotCommand(tt);
-
-}
-
-void MainWindow::on_pushButton_5_clicked()
-{
-    char tt=0x02;
-    sendRobotCommand(tt,-250);
-}
-
-
-void MainWindow::on_pushButton_4_clicked()
-{
-    char tt=0x04;
-    sendRobotCommand(tt,3.14159/4);
-}
-
-void MainWindow::on_pushButton_6_clicked()
-{
-    char tt=0x03;
-    sendRobotCommand(tt,-3.14159/4);
-}
-
-void MainWindow::on_pushButton_clicked()
-{
-
-}
 
 void MainWindow::sendRobotCommand(char command,double speed,int radius)
 {
@@ -830,100 +884,8 @@ void MainWindow::sendRobotCommand(char command,double speed,int radius)
 
         }
     }
-  /*  else
-    {
-        struct timespec t;
-        RobotCommand newcommand;
-        newcommand.command=command;
-        newcommand.radius=radius;
-        newcommand.speed=speed;
-        //clock_gettime(CLOCK_REALTIME,&t);
-        newcommand.timestamp=std::chrono::steady_clock::now();//(int64_t)(t.tv_sec) * (int64_t)1000000000 + (int64_t)(t.tv_nsec);
-        commandQuery.push_back(newcommand);
-    }*/
 }
-/*void MainWindow::autonomousRobotCommand(char command,double speed,int radius)
-{
-    return;
-    std::vector<unsigned char> mess;
-    switch(command)
-    {
-    case  ROBOT_VPRED:
-        mess=robot.setTranslationSpeed(speed);
-        break;
-    case ROBOT_VZAD:
-        mess=robot.setTranslationSpeed(speed);
-        break;
-    case ROBOT_VLAVO:
-        mess=robot.setRotationSpeed(speed);
-        break;
-    case ROBOT_VPRAVO:
-        mess=robot.setRotationSpeed(speed);
-        break;
-    case ROBOT_STOP:
-        mess=robot.setTranslationSpeed(0);
-        break;
-    case ROBOT_ARC:
-        mess=robot.setArcSpeed(speed,radius);
-        break;
 
-    }
-    if (sendto(rob_s, (char*)mess.data(), sizeof(char)*mess.size(), 0, (struct sockaddr*) &rob_si_posli, rob_slen) == -1)
-    {
-
-    }
-}
-void MainWindow::robotexec()
-{
-
-
-    if(applyDelay==true)
-    {
-        struct timespec t;
-
-        // clock_gettime(CLOCK_REALTIME,&t);
-        auto timestamp=std::chrono::steady_clock::now();;//(int64_t)(t.tv_sec) * (int64_t)1000000000 + (int64_t)(t.tv_nsec);
-        for(int i=0;i<commandQuery.size();i++)
-        {
-       //     std::cout<<(std::chrono::duration_cast<std::chrono::nanoseconds>(timestamp-commandQuery[i].timestamp)).count()<<std::endl;
-            if((std::chrono::duration_cast<std::chrono::nanoseconds>(timestamp-commandQuery[i].timestamp)).count()>(2.5*1000000000))
-            {
-                char cmd=commandQuery[i].command;
-                std::vector<unsigned char> mess;
-                switch(cmd)
-                {
-                case  ROBOT_VPRED:
-                    mess=robot.setTranslationSpeed(commandQuery[i].speed);
-                    break;
-                case ROBOT_VZAD:
-                    mess=robot.setTranslationSpeed(commandQuery[i].speed);
-                    break;
-                case ROBOT_VLAVO:
-                    mess=robot.setRotationSpeed(commandQuery[i].speed);
-                    break;
-                case ROBOT_VPRAVO:
-                    mess=robot.setRotationSpeed(commandQuery[i].speed);
-                    break;
-                case ROBOT_STOP:
-                    mess=robot.setTranslationSpeed(0);
-                    break;
-                case ROBOT_ARC:
-                    mess=robot.setArcSpeed(commandQuery[i].speed,commandQuery[i].radius);
-                    break;
-
-                }
-                if (sendto(rob_s, (char*)mess.data(), sizeof(char)*mess.size(), 0, (struct sockaddr*) &rob_si_posli, rob_slen) == -1)
-                {
-
-                }
-                commandQuery.erase(commandQuery.begin()+i);
-                i--;
-
-            }
-        }
-    }
-}
-*/
 
 
 void MainWindow::paintThisLidar(LaserMeasurement &laserData)
@@ -933,78 +895,78 @@ void MainWindow::paintThisLidar(LaserMeasurement &laserData)
 //    update();
 }
 
-void MainWindow::on_pushButton_8_clicked()//forward
-{
-    CommandVector help;
-    help.command.commandType=1;
-    help.command.actualAngle=0;
-    help.command.actualDist=0;
-    help.command.desiredAngle=0;
-    help.command.desiredDist=100;
-    struct timespec t;
+//void MainWindow::on_pushButton_8_clicked()//forward
+//{
+//    CommandVector help;
+//    help.command.commandType=1;
+//    help.command.actualAngle=0;
+//    help.command.actualDist=0;
+//    help.command.desiredAngle=0;
+//    help.command.desiredDist=100;
+//    struct timespec t;
 
-    // clock_gettime(CLOCK_REALTIME,&t);
-    help.timestamp=std::chrono::steady_clock::now();//(int64_t)(t.tv_sec) * (int64_t)1000000000 + (int64_t)(t.tv_nsec);
-    AutonomousCommandQuerry.push_back(help);
-}
+//    // clock_gettime(CLOCK_REALTIME,&t);
+//    help.timestamp=std::chrono::steady_clock::now();//(int64_t)(t.tv_sec) * (int64_t)1000000000 + (int64_t)(t.tv_nsec);
+//    AutonomousCommandQuerry.push_back(help);
+//}
 
-void MainWindow::on_pushButton_10_clicked()//right
-{
-    CommandVector help;
-    help.command.commandType=2;
-    help.command.actualAngle=0;
-    help.command.actualDist=0;
-    help.command.desiredAngle=-20;
-    help.command.desiredDist=0;
-    struct timespec t;
+//void MainWindow::on_pushButton_10_clicked()//right
+//{
+//    CommandVector help;
+//    help.command.commandType=2;
+//    help.command.actualAngle=0;
+//    help.command.actualDist=0;
+//    help.command.desiredAngle=-20;
+//    help.command.desiredDist=0;
+//    struct timespec t;
 
-    // clock_gettime(CLOCK_REALTIME,&t);
-    help.timestamp=std::chrono::steady_clock::now();//(int64_t)(t.tv_sec) * (int64_t)1000000000 + (int64_t)(t.tv_nsec);
-    AutonomousCommandQuerry.push_back(help);
-}
+//    // clock_gettime(CLOCK_REALTIME,&t);
+//    help.timestamp=std::chrono::steady_clock::now();//(int64_t)(t.tv_sec) * (int64_t)1000000000 + (int64_t)(t.tv_nsec);
+//    AutonomousCommandQuerry.push_back(help);
+//}
 
-void MainWindow::on_pushButton_11_clicked()//back
-{
-    CommandVector help;
-    help.command.commandType=1;
-    help.command.actualAngle=0;
-    help.command.actualDist=0;
-    help.command.desiredAngle=0;
-    help.command.desiredDist=-100;
-    struct timespec t;
+//void MainWindow::on_pushButton_11_clicked()//back
+//{
+//    CommandVector help;
+//    help.command.commandType=1;
+//    help.command.actualAngle=0;
+//    help.command.actualDist=0;
+//    help.command.desiredAngle=0;
+//    help.command.desiredDist=-100;
+//    struct timespec t;
 
-    //   clock_gettime(CLOCK_REALTIME,&t);
-    help.timestamp=std::chrono::steady_clock::now();//(int64_t)(t.tv_sec) * (int64_t)1000000000 + (int64_t)(t.tv_nsec);
-    AutonomousCommandQuerry.push_back(help);
-}
+//    //   clock_gettime(CLOCK_REALTIME,&t);
+//    help.timestamp=std::chrono::steady_clock::now();//(int64_t)(t.tv_sec) * (int64_t)1000000000 + (int64_t)(t.tv_nsec);
+//    AutonomousCommandQuerry.push_back(help);
+//}
 
-void MainWindow::on_pushButton_9_clicked()//left
-{
-    CommandVector help;
-    help.command.commandType=2;
-    help.command.actualAngle=0;
-    help.command.actualDist=0;
-    help.command.desiredAngle=20;
-    help.command.desiredDist=0;
-    struct timespec t;
+//void MainWindow::on_pushButton_9_clicked()//left
+//{
+//    CommandVector help;
+//    help.command.commandType=2;
+//    help.command.actualAngle=0;
+//    help.command.actualDist=0;
+//    help.command.desiredAngle=20;
+//    help.command.desiredDist=0;
+//    struct timespec t;
 
-    //   clock_gettime(CLOCK_REALTIME,&t);
-    help.timestamp=std::chrono::steady_clock::now();//(int64_t)(t.tv_sec) * (int64_t)1000000000 + (int64_t)(t.tv_nsec);
-    AutonomousCommandQuerry.push_back(help);
-}
+//    //   clock_gettime(CLOCK_REALTIME,&t);
+//    help.timestamp=std::chrono::steady_clock::now();//(int64_t)(t.tv_sec) * (int64_t)1000000000 + (int64_t)(t.tv_nsec);
+//    AutonomousCommandQuerry.push_back(help);
+//}
 
-void MainWindow::on_pushButton_12_clicked()
-{
-//    zX=ui->lineEdit_4->text().toDouble();
-//    zY=ui->lineEdit_5->text().toDouble();
-    toleranciaUhla=2;
-    naviguj=true;
-}
+//void MainWindow::on_pushButton_12_clicked()
+//{
+////    zX=ui->lineEdit_4->text().toDouble();
+////    zY=ui->lineEdit_5->text().toDouble();
+//    toleranciaUhla=2;
+//    naviguj=true;
+//}
 
-void MainWindow::on_pushButton_13_clicked()
-{
-//    ui->lineEdit_4->setText("stlacil sa gombik");
-}
+//void MainWindow::on_pushButton_13_clicked()
+//{
+////    ui->lineEdit_4->setText("stlacil sa gombik");
+//}
 
 
 void MainWindow::skeletonprocess()
@@ -1063,36 +1025,36 @@ void MainWindow::skeletonprocess()
      updateSkeletonPicture=1;
   //      std::cout<<"doslo "<<ske_recv_len<<std::endl;
       //  continue;
-        for(int i=0;i<75;i+=3)
-        {
+//        for(int i=0;i<75;i+=3)
+//        {
 //            std::cout<<klby[i]<<" "<<bbbk.joints[i].x<<" "<<bbbk.joints[i].y<<" "<<bbbk.joints[i].z<<std::endl;
-        }
+//        }
     }
     std::cout<<"koniec thread"<<std::endl;
 }
 
-void MainWindow::on_checkBox_2_clicked(bool checked)
-{
-    showLidar=checked;
-}
+//void MainWindow::on_checkBox_2_clicked(bool checked)
+//{
+//    showLidar=checked;
+//}
 
 
-void MainWindow::on_checkBox_3_clicked(bool checked)
-{
-    showCamera=checked;
-}
+//void MainWindow::on_checkBox_3_clicked(bool checked)
+//{
+//    showCamera=checked;
+//}
 
 
-void MainWindow::on_checkBox_4_clicked(bool checked)
-{
-    showSkeleton=checked;
-}
+//void MainWindow::on_checkBox_4_clicked(bool checked)
+//{
+//    showSkeleton=checked;
+//}
 
 
-void MainWindow::on_checkBox_clicked(bool checked)
-{
-    applyDelay=checked;
-}
+//void MainWindow::on_checkBox_clicked(bool checked)
+//{
+//    applyDelay=checked;
+//}
 
 void MainWindow::imageViewer()
 {
@@ -1152,50 +1114,56 @@ void MainWindow::imageViewer()
 
 
 
-void MainWindow::on_checkBox_lidar_clicked(bool checked)
-{
-    showLidar=checked;
-}
+//void MainWindow::on_checkBox_lidar_clicked(bool checked)
+//{
+//    showLidar=checked;
+//}
 
 
-void MainWindow::on_checkBox_skeleton_clicked(bool checked)
-{
-    showSkeleton = checked;
-}
+//void MainWindow::on_checkBox_skeleton_clicked(bool checked)
+//{
+//    showSkeleton = checked;
+//}
 
 
-void MainWindow::on_checkBox_cam_clicked(bool checked)
-{
-    showCamera = checked;
-}
+//void MainWindow::on_checkBox_cam_clicked(bool checked)
+//{
+//    showCamera = checked;
+//}
 
 
-void MainWindow::on_stop_button_clicked()
+//void MainWindow::on_stop_button_clicked()
+//{
+//    sendRobotCommand(ROBOT_STOP);
+//}
+
+
+//void MainWindow::on_pushButton_forward_clicked()
+//{
+//    sendRobotCommand(ROBOT_VPRED, 350);
+//}
+
+
+//void MainWindow::on_pushButton_backward_clicked()
+//{
+//    sendRobotCommand(ROBOT_VZAD, -250);
+//}
+
+
+//void MainWindow::on_pushButton_right_clicked()
+//{
+//    sendRobotCommand(ROBOT_VPRAVO, -PI/4);
+//}
+
+
+//void MainWindow::on_pushButton_left_clicked()
+//{
+//    sendRobotCommand(ROBOT_VLAVO, PI/4);
+//}
+
+
+void MainWindow::on_pushButton_stop_clicked()
 {
     sendRobotCommand(ROBOT_STOP);
-}
-
-
-void MainWindow::on_pushButton_forward_clicked()
-{
-    sendRobotCommand(ROBOT_VPRED, 350);
-}
-
-
-void MainWindow::on_pushButton_backward_clicked()
-{
-    sendRobotCommand(ROBOT_VZAD, -250);
-}
-
-
-void MainWindow::on_pushButton_right_clicked()
-{
-    sendRobotCommand(ROBOT_VPRAVO, -PI/4);
-}
-
-
-void MainWindow::on_pushButton_left_clicked()
-{
-    sendRobotCommand(ROBOT_VLAVO, PI/4);
 }
 

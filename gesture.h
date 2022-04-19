@@ -71,11 +71,7 @@ public:
 //    vector<vector<klb>, vector<double>> gesto1;
 //    vector<vector<int>, vector<double>> prst1;
 //    vector<vector<vector<int>, vector<double>>> gesto;
-    GestoStruct gestoStop;
-    GestoStruct gestoForward;
-    GestoStruct gestoBackward;
-    GestoStruct gestoRight;
-    GestoStruct gestoLeft;
+
 
     vector<GestoStruct> allGests;
 };

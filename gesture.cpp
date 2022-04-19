@@ -2,34 +2,37 @@
 
 Gesture::Gesture()
 {
-    gestoStop.goodFingers.push_back({{26, 27, 28, 29}, 0.02, 0.0, 95}); // right index finger
-    gestoStop.goodFingers.push_back({{30, 31, 32, 33}, 0.02, 0.0, 90}); // right middle f. jonty
-    gestoStop.goodFingers.push_back({{34, 35, 36, 37}, 0.02, 0.0, 85});   // right ring finger
-//    gestoStop.fingers.push_back({{38, 39, 40, 41}, 10, 0.02});   // right pinky finger
+    GestoStruct gestoStop;
+    gestoStop.goodFingers.push_back({{26, 27, 28, 29}, 0.06, 0.0, 95}); // right index finger
+    gestoStop.goodFingers.push_back({{30, 31, 32, 33}, 0.06, 0.0, 90}); // right middle f. jonty
+    gestoStop.goodFingers.push_back({{34, 35, 36, 37}, 0.06, 0.0, 85});   // right ring finger
+    gestoStop.goodFingers.push_back({{38, 39, 40, 41}, 0.06, 0.0, 85});   // right pinky finger
     gestoStop.execute = GESTO_STOP;
 
-    gestoForward.goodFingers.push_back({{26, 27, 28, 29}, 0.02, 0.0, 180});
-    gestoForward.goodFingers.push_back({{30, 31, 32, 33}, 0.02, 0.0, 180});
-//    gestoForward.badFingers.push_back({{34, 35, 36, 37}, 10, 0.02, 80});
-//    gestoForward.badFingers.push_back({{38, 39, 40, 41}, 10, 0.02, 80});
+    GestoStruct gestoForward;
+    gestoForward.goodFingers.push_back({{26, 27, 28, 29}, 0.06, 0.0, 170});
+    gestoForward.goodFingers.push_back({{30, 31, 32, 33}, 0.06, 0.0, 170});
     gestoForward.execute = GESTO_FORWARD;
 
-//    gestoBackward.badFingers.push_back({{26, 27, 28, 29}, 10, 0.02, 80});
-//    gestoBackward.badFingers.push_back({{30, 31, 32, 33}, 10, 0.02, 80});
-    gestoBackward.goodFingers.push_back({{34, 35, 36, 37}, 0.02, 0.0, 180});
-    gestoBackward.goodFingers.push_back({{38, 39, 40, 41}, 0.02, 0.0, 180});
+    GestoStruct gestoBackward;
+    gestoBackward.goodFingers.push_back({{22, 23, 24, 25}, 0.06, 0.0, 90});
+    gestoBackward.goodFingers.push_back({{38, 39, 40, 41}, 0.06, 0.0, 180});
     gestoBackward.execute = GESTO_BACKWARD;
 
-//    gestoLeft.badFingers.push_back({{26, 27, 28, 29}, 0.02, 0.0, 130});
-    gestoLeft.goodFingers.push_back({{5, 6, 7, 8}, 0.02, 0.0, 130});
+    GestoStruct gestoLeft;
+    gestoLeft.goodFingers.push_back({{1, 2, 3, 4}, 0.06, 0.0, 10});
+    gestoLeft.goodFingers.push_back({{5, 6, 7, 8}, 0.06, 0.0, 95});
     gestoLeft.execute = GESTO_LEFT;
 
-    gestoRight.goodFingers.push_back({{5, 6, 7, 8}, 0.02, 0.0, 50});
+    GestoStruct gestoRight;
+    gestoRight.goodFingers.push_back({{22, 23, 24, 25}, 0.06, 0.0, 180});
+    gestoRight.goodFingers.push_back({{26, 27, 28, 29}, 0.06, 0.0, 100});
+    gestoRight.goodFingers.push_back({{31, 31, 35, 39}, 0.06, 0.0, 155});
     gestoRight.execute = GESTO_RIGHT;
 
     allGests.push_back(gestoStop);
-    allGests.push_back(gestoForward);
     allGests.push_back(gestoBackward);
+    allGests.push_back(gestoForward);
     allGests.push_back(gestoLeft);
     allGests.push_back(gestoRight);
 
@@ -45,7 +48,6 @@ int Gesture::detectGestures(){
     for(GestoStruct gesto : allGests){
 
         short goodIter = 0;
-        short badIter = 0;
         for(Finger finger : gesto.goodFingers){
             vector<klb> finger_joints_coords;
             for(int k : finger.joints){
@@ -61,8 +63,9 @@ int Gesture::detectGestures(){
                 break;
             }
         }
-        std::cout<<"======================="<<std::endl;
+//        cout<<"GoodIter: "<<goodIter<<endl;
         if(goodIter == gesto.goodFingers.size()){
+            std::cout<<"======================="<<std::endl;
     //        gestoStop.execute = true;
             cout<<"DETEGOVANE GESTO:"<<endl;
             result = gesto.execute;
@@ -85,15 +88,15 @@ int Gesture::detectGestures(){
                 break;
             }
 
+            std::cout<<"======================="<<std::endl;
             return result;
         }
-        std::cout<<"======================="<<std::endl;
 
     }
 
     if(result == NULL){
         result = NON_DETECT;
-        cout<<"ZIADNE GESTO DETEGOVANE"<<endl;
+//        cout<<"ZIADNE GESTO DETEGOVANE"<<endl;
     }
 
 
@@ -127,7 +130,7 @@ bool Gesture::isFingerInLine(std::vector<klb> finger_joints, double max_thresh, 
         tempy = finger_joints.at(i).y;
 
         double tempdist = pDistFromLine(tempx, tempy, finger_joints.at(0).x, finger_joints.at(0).y, finger_joints.at(3).x, finger_joints.at(3).y);
-        std::cout<<"Temp dist: "<<tempdist<<std::endl;
+//        std::cout<<"Temp dist: "<<tempdist<<std::endl;
         if(tempdist > max_thresh || tempdist < min_thresh){
             return false;
         }
