@@ -1,4 +1,4 @@
-# ESA_IROBOT_HMI
+# Dokumentácia zadanie 1. HMI
 
 ## Opis úlohy:
 
